@@ -1,0 +1,18 @@
+{
+  "name": "evm-test-cli",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ethereumjs/tx": "^10.0.0",
+    "commander": "^14.0.0",
+    "ethers": "^6.15.0",
+    "viem": "^2.35.1"
+  }
+}
