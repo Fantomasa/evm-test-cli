@@ -18,7 +18,7 @@ export async function worker(id: number, opts: Options, endTime: number) {
       const duration = txEndTime - txStartTime;
 
       count++;
-      console.log(`Worker (${id}): ${tx.hash} finished in ${Math.round(duration / 1000)}s`);
+      console.log(`Worker (${id}): ${tx.hash} finished in ${(duration / 1000).toFixed(2)}s`);
     } catch (e: any) {
       console.error(`Worker (${id}): tx failed - ${e.message}`);
       // Add small delay to avoid rapid retries

@@ -65,13 +65,13 @@ export class WalletTxExecutor {
 
     switch (type) {
       case TxType.LEGACY:
-        return this.buildLegacyTx(nonce);
+        return await this.buildLegacyTx(nonce);
 
       case TxType.EIP1559:
-        return this.buildEIP1559Tx(nonce);
+        return await this.buildEIP1559Tx(nonce);
 
       case TxType.BLOB:
-        return this.buildBlobTx(nonce);
+        return await this.buildBlobTx(nonce);
 
       default:
         throw new Error(`Unknown transaction type: ${type}`);
@@ -123,12 +123,16 @@ export class WalletTxExecutor {
     };
   }
 
-  private buildLegacyTx(nonce: number): TransactionRequest {
+  private async buildLegacyTx(nonce: number): Promise<TransactionRequest> {
+    const fee = await this.wallet.provider?.getFeeData();
+
     return {
       to: this.to,
       value: 1n,
       nonce,
-      gasLimit: 21_000n
+      gasLimit: 21_000n,
+      type: 0,
+      gasPrice: fee?.gasPrice
     };
   }
 }
