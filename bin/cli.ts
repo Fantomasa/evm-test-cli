@@ -11,7 +11,7 @@ program
   .command("tx")
   .description("Send transactions for N seconds")
   .requiredOption("-d, --duration <seconds>", "How many seconds to run", "30")
-  .option("-t, --type <type>", "Transaction type: legacy | eip1559 | blob", "legacy")
+  .option("-t, --type <type>", "Transaction type: legacy | eip1559 | blob", "eip1559")
   .requiredOption("-r, --rpc <url>", "RPC endpoint")
   .requiredOption("-k, --key <privateKey>", "Private key for sending txs")
   .requiredOption("--to <address>", "Recipient address for transactions")

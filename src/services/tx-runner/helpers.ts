@@ -12,13 +12,13 @@ export async function worker(id: number, opts: Options, endTime: number) {
       const txStartTime = Date.now();
 
       const tx = await walletTxExecutor.sendTransaction(opts.txType);
-      // await tx.wait();
 
       const txEndTime = Date.now();
       const duration = txEndTime - txStartTime;
 
       count++;
       console.log(`Worker (${id}): ${tx.hash} finished in ${(duration / 1000).toFixed(2)}s`);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (e: any) {
       console.error(`Worker (${id}): tx failed - ${e.message}`);
       // Add small delay to avoid rapid retries
