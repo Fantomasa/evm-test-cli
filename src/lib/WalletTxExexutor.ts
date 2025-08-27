@@ -38,6 +38,20 @@ export class WalletTxExecutor {
     }
   }
 
+  async validateTransactionType(type: TxType): Promise<void> {
+    if (type === TxType.BLOB) {
+      const blobIsSupported = await chainSupportsBlobTx(
+        this.wallet.provider as ethers.JsonRpcProvider
+      );
+
+      if (!blobIsSupported) {
+        throw new Error("❌ The chain doesn't support blob transactions. Process stopped.");
+      }
+
+      console.log("✅ Blob transactions are supported on this chain.");
+    }
+  }
+
   async sendTransaction(type: TxType): Promise<ethers.TransactionResponse> {
     const txRequest = await this.buildTx(type);
     return this.wallet.sendTransaction(txRequest);
@@ -96,13 +110,6 @@ export class WalletTxExecutor {
   }
 
   private async buildBlobTx(nonce: number): Promise<TransactionRequest> {
-    const blobIsSupported = await chainSupportsBlobTx(
-      this.wallet.provider as ethers.JsonRpcProvider
-    );
-    if (!blobIsSupported) {
-      throw new Error("The chain doesn't support blob transactions");
-    }
-
     const fee = await this.wallet.provider?.getFeeData();
 
     return {

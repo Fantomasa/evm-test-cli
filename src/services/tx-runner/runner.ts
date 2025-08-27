@@ -18,6 +18,16 @@ export async function runTxForSeconds(options: Options) {
     To: ${options.to}
   `);
 
+  // Validate transaction type support before starting workers
+  try {
+    const walletTxExecutor = WalletTxExecutor.getInstance(options.key, options.rpc, options.to);
+    await walletTxExecutor.initialize();
+    await walletTxExecutor.validateTransactionType(options.txType);
+  } catch (error: any) {
+    console.error(error.message);
+    process.exit(1);
+  }
+
   const endTime = Date.now() + options.duration * 1000;
   const workers = Array.from({ length: options.concurrency }, (_, i) =>
     worker(i + 1, options, endTime)
