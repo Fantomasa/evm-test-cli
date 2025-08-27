@@ -1,20 +1,24 @@
-import { ethers } from "ethers";
-import { buildTx } from "../tx-builder/tx-builder";
-
+import { WalletTxExecutor } from "./WalletTxExexutor";
 import type { Options } from "./types";
 
 export async function worker(id: number, opts: Options, endTime: number) {
-  const provider = new ethers.JsonRpcProvider(opts.rpc);
-  const wallet = new ethers.Wallet(opts.key, provider);
+  const walletTxExecutor = WalletTxExecutor.getInstance(opts.key, opts.rpc, opts.to);
+
+  await walletTxExecutor.initialize();
 
   let count = 0;
   while (Date.now() < endTime) {
     try {
-      const txRequest = await buildTx(wallet, opts.to, opts.txType);
-      const tx = await wallet.sendTransaction(txRequest);
-      await tx.wait();
+      const txStartTime = Date.now();
+
+      const tx = await walletTxExecutor.sendTransaction(opts.txType);
+      // await tx.wait();
+
+      const txEndTime = Date.now();
+      const duration = txEndTime - txStartTime;
+
       count++;
-      console.log(`Worker (${id}): ${tx.hash} finished`);
+      console.log(`Worker (${id}): ${tx.hash} finished in ${Math.round(duration / 1000)}s`);
     } catch (e: any) {
       console.error(`Worker (${id}): tx failed - ${e.message}`);
       // Add small delay to avoid rapid retries

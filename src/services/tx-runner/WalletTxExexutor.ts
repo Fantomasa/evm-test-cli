@@ -4,15 +4,32 @@ import type { TransactionRequest } from "ethers";
 import { chainSupportsBlobTx } from "../tx-builder/helpers";
 import { TxType } from "../tx-builder/types";
 
-export class TxBuilder {
+export class WalletTxExecutor {
+  private static instance: WalletTxExecutor | null = null;
+
   private wallet: ethers.Wallet;
   private to: string;
   private baseNonce: number | null = null;
   private nonceCounter = 0;
 
-  constructor(privateKey: string, to?: string) {
-    this.wallet = new ethers.Wallet(privateKey);
+  private constructor(privateKey: string, rpcUrl: string, to?: string) {
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
+    this.wallet = new ethers.Wallet(privateKey, provider);
     this.to = to ?? this.wallet.address;
+  }
+
+  static getInstance(privateKey?: string, rpcUrl?: string, to?: string): WalletTxExecutor {
+    if (!WalletTxExecutor.instance) {
+      if (!privateKey || !rpcUrl) {
+        throw new Error("First call to getInstance must provide privateKey and rpcUrl");
+      }
+      WalletTxExecutor.instance = new WalletTxExecutor(privateKey, rpcUrl, to);
+    }
+    return WalletTxExecutor.instance;
+  }
+
+  static reset(): void {
+    WalletTxExecutor.instance = null;
   }
 
   async initialize(): Promise<void> {
@@ -21,7 +38,12 @@ export class TxBuilder {
     }
   }
 
-  async buildTx(type: TxType): Promise<TransactionRequest> {
+  async sendTransaction(type: TxType): Promise<ethers.TransactionResponse> {
+    const txRequest = await this.buildTx(type);
+    return this.wallet.sendTransaction(txRequest);
+  }
+
+  private async buildTx(type: TxType): Promise<TransactionRequest> {
     await this.initialize();
 
     const nonce = this.getNextNonce();
@@ -51,10 +73,12 @@ export class TxBuilder {
 
   private getNextNonce(): number {
     if (this.baseNonce === null) {
-      throw new Error("TxBuilder is not initialized");
+      throw new Error("WalletTxExecutor is not initialized");
     }
 
-    return this.baseNonce + this.nonceCounter++;
+    const currentNonce = this.baseNonce + this.nonceCounter;
+    this.nonceCounter++;
+    return currentNonce;
   }
 
   private async buildEIP1559Tx(nonce: number): Promise<TransactionRequest> {

@@ -1,8 +1,12 @@
 import type { Options } from "./types";
 import { worker } from "./helpers";
+import { WalletTxExecutor } from "./WalletTxExexutor";
 import { ethers } from "ethers";
 
 export async function runTxForSeconds(options: Options) {
+  // Reset singleton to ensure fresh state for each test run
+  WalletTxExecutor.reset();
+
   const wallet = new ethers.Wallet(options.key);
 
   console.info(`🚀 Starting EVM transaction test with configuration:
