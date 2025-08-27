@@ -6,4 +6,5 @@ export type Options = {
   rpc: string;
   key: string;
   to: string;
+  concurrency: number;
 };

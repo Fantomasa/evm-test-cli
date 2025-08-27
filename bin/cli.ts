@@ -14,13 +14,18 @@ program
   .requiredOption("-r, --rpc <url>", "RPC endpoint")
   .requiredOption("-k, --key <privateKey>", "Private key for sending txs")
   .requiredOption("--to <address>", "Recipient address for transactions")
+  .option("-c, --concurrency", "Concurrency tx for sending txs")
   .action(async (opts) => {
+    let concurrency = Number(opts.concurrency) ?? 1;
+    if (isNaN(concurrency)) concurrency = 1;
+
     await runTxForSeconds({
       duration: parseInt(opts.duration),
       txType: opts.type,
       rpc: opts.rpc,
       key: opts.key,
-      to: opts.to
+      to: opts.to,
+      concurrency
     });
   });
 
