@@ -1,4 +1,4 @@
-import { WalletTxExecutor } from "./WalletTxExexutor";
+import { WalletTxExecutor } from "../../lib/WalletTxExexutor";
 import type { Options } from "./types";
 
 export async function worker(id: number, opts: Options, endTime: number) {

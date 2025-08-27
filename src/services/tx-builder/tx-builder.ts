@@ -1,5 +1,5 @@
 import type { Wallet, TransactionRequest } from "ethers";
-import { TxType } from "./types";
+import { TxType } from "../../common/types";
 import { chainSupportsBlobTx } from "./helpers";
 import type { JsonRpcProvider } from "ethers";
 

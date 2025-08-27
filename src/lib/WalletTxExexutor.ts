@@ -1,8 +1,8 @@
 import { ethers } from "ethers";
 import type { TransactionRequest } from "ethers";
 
-import { chainSupportsBlobTx } from "../tx-builder/helpers";
-import { TxType } from "../tx-builder/types";
+import { chainSupportsBlobTx } from "../services/tx-builder/helpers";
+import { TxType } from "../common/types";
 
 export class WalletTxExecutor {
   private static instance: WalletTxExecutor | null = null;

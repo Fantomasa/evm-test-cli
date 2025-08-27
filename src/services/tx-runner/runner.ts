@@ -1,6 +1,6 @@
 import type { Options } from "./types";
 import { worker } from "./helpers";
-import { WalletTxExecutor } from "./WalletTxExexutor";
+import { WalletTxExecutor } from "../../lib/WalletTxExexutor";
 import { ethers } from "ethers";
 
 export async function runTxForSeconds(options: Options) {

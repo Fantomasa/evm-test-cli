@@ -1,4 +1,4 @@
-import type { TxType } from "../tx-builder/types";
+import type { TxType } from "../../common/types";
 
 export type Options = {
   duration: number;
