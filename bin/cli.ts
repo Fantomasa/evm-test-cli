@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
-import { runTxForSeconds } from "../src/services/tx-runner/runner";
-import type { Options } from "../src/services/tx-runner/types";
+import { runTransactionTest } from "../src/worker/orchestrator";
+import { TransactionType } from "../src/types";
+import type { TestConfiguration } from "../src/types";
+import { DEFAULT_VALUES } from "../src/utils/constants";
 
 const program = new Command();
 
@@ -10,26 +12,45 @@ program.name("evm-test-cli").description("EVM Transaction Testing CLI Tool").ver
 program
   .command("tx")
   .description("Send transactions for N seconds")
-  .requiredOption("-d, --duration <seconds>", "How many seconds to run", "30")
-  .option("-t, --type <type>", "Transaction type: legacy | eip1559 | blob", "eip1559")
+  .requiredOption(
+    "-d, --duration <seconds>",
+    "How many seconds to run",
+    DEFAULT_VALUES.DEFAULT_DURATION.toString()
+  )
+  .option("-t, --type <type>", "Transaction type: legacy | eip1559 | blob", TransactionType.EIP1559)
   .requiredOption("-r, --rpc <url>", "RPC endpoint")
   .requiredOption("-k, --key <privateKey>", "Private key for sending txs")
   .requiredOption("--to <address>", "Recipient address for transactions")
-  .option("-c, --concurrency <number>", "Concurrency tx for sending txs")
+  .option(
+    "-c, --concurrency <number>",
+    "Concurrency for sending txs",
+    DEFAULT_VALUES.DEFAULT_CONCURRENCY.toString()
+  )
   .action(async (opts) => {
-    let concurrency = Number(opts.concurrency) ?? 1;
-    if (isNaN(concurrency)) concurrency = 1;
+    let concurrency = Number(opts.concurrency) ?? DEFAULT_VALUES.DEFAULT_CONCURRENCY;
+    if (isNaN(concurrency)) concurrency = DEFAULT_VALUES.DEFAULT_CONCURRENCY;
 
-    const options: Options = {
+    // Validate transaction type
+    const txType = opts.type as TransactionType;
+    if (!Object.values(TransactionType).includes(txType)) {
+      console.error(
+        `Invalid transaction type: ${opts.type}. Must be one of: ${Object.values(
+          TransactionType
+        ).join(", ")}`
+      );
+      process.exit(1);
+    }
+
+    const config: TestConfiguration = {
       duration: parseInt(opts.duration),
-      txType: opts.type,
+      txType,
       rpc: opts.rpc,
-      key: opts.key,
-      to: opts.to,
+      privateKey: opts.key,
+      recipient: opts.to,
       concurrency
     };
 
-    await runTxForSeconds(options);
+    await runTransactionTest(config);
   });
 
 program.parse();

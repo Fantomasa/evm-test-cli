@@ -1,0 +1,36 @@
+export enum TransactionType {
+  LEGACY = "legacy",
+  EIP1559 = "eip1559",
+  BLOB = "blob"
+}
+
+export interface TestConfiguration {
+  duration: number;
+  txType: TransactionType;
+  rpc: string;
+  privateKey: string;
+  recipient: string;
+  concurrency: number;
+}
+
+export interface WorkerResult {
+  workerId: number;
+  transactionCount: number;
+  errors: string[];
+}
+
+export interface WorkerConfig {
+  id: number;
+  config: TestConfiguration;
+  endTime: number;
+}
+
+export interface NonceInfo {
+  baseNonce: number | null;
+  currentCounter: number;
+}
+
+export interface ChainInfo {
+  chainId: bigint;
+  supportsBlobTx: boolean;
+}
