@@ -3,26 +3,30 @@ import type { TransactionResponse } from "ethers";
 import { TransactionBuilder } from "../transaction/builder";
 import { TransactionValidator } from "../transaction/validator";
 import { ProviderManager } from "./provider";
+import { NonceManager } from "./nonce-manager";
 import type { TransactionType, NonceInfo } from "../types";
 
 export class TransactionExecutor {
   private wallet: ethers.Wallet;
   private builder: TransactionBuilder;
   private validator: TransactionValidator;
-  private baseNonce: number | null = null;
-  private nonceCounter = 0;
+  private nonceManager: NonceManager;
 
-  constructor(privateKey: string, providerManager: ProviderManager, recipientAddress: string) {
+  constructor(
+    privateKey: string,
+    providerManager: ProviderManager,
+    recipientAddress: string,
+    nonceManager: NonceManager
+  ) {
     const provider = providerManager.getProvider();
     this.wallet = new ethers.Wallet(privateKey, provider);
     this.builder = new TransactionBuilder(provider, recipientAddress);
     this.validator = new TransactionValidator(provider);
+    this.nonceManager = nonceManager;
   }
 
   async initialize(): Promise<void> {
-    if (this.baseNonce === null) {
-      this.baseNonce = await this.wallet.getNonce();
-    }
+    // No longer need to manage nonce locally - handled by NonceManager
   }
 
   async validateTransactionType(type: TransactionType): Promise<void> {
@@ -30,9 +34,7 @@ export class TransactionExecutor {
   }
 
   async sendTransaction(type: TransactionType): Promise<TransactionResponse> {
-    await this.ensureInitialized();
-
-    const nonce = this.getNextNonce();
+    const nonce = this.nonceManager.getNextNonce();
     const txRequest = await this.builder.buildTransaction(type, nonce);
 
     return this.wallet.sendTransaction(txRequest);
@@ -40,28 +42,12 @@ export class TransactionExecutor {
 
   getNonceInfo(): NonceInfo {
     return {
-      baseNonce: this.baseNonce,
-      currentCounter: this.nonceCounter
+      baseNonce: this.nonceManager.getCurrentNonce(),
+      currentCounter: this.nonceManager.getUsedCount()
     };
   }
 
   getWalletAddress(): string {
     return this.wallet.address;
-  }
-
-  private async ensureInitialized(): Promise<void> {
-    if (this.baseNonce === null) {
-      await this.initialize();
-    }
-  }
-
-  private getNextNonce(): number {
-    if (this.baseNonce === null) {
-      throw new Error("TransactionExecutor is not initialized");
-    }
-
-    const currentNonce = this.baseNonce + this.nonceCounter;
-    this.nonceCounter++;
-    return currentNonce;
   }
 }

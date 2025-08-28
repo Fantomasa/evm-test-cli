@@ -1,3 +1,5 @@
+import type { NonceManager } from "../core/nonce-manager";
+
 export enum TransactionType {
   LEGACY = "legacy",
   EIP1559 = "eip1559",
@@ -23,6 +25,7 @@ export interface WorkerConfig {
   id: number;
   config: TestConfiguration;
   endTime: number;
+  nonceManager: NonceManager;
 }
 
 export interface NonceInfo {
@@ -33,4 +36,10 @@ export interface NonceInfo {
 export interface ChainInfo {
   chainId: bigint;
   supportsBlobTx: boolean;
+}
+
+export interface WorkerStatus {
+  id: number;
+  transactionCount: number;
+  errorCount: number;
 }
