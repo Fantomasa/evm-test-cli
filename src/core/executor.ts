@@ -51,6 +51,10 @@ export class TransactionExecutor {
     return this.wallet.address;
   }
 
+  getProvider() {
+    return this.wallet.provider!;
+  }
+
   async getCurrentNetworkNonce(): Promise<number> {
     return await this.wallet.getNonce();
   }

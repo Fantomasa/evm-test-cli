@@ -1,8 +1,15 @@
 import { TransactionExecutor } from "../core/executor";
 import { ProviderManager } from "../core/provider";
-import type { WorkerConfig, WorkerResult, TestConfiguration, WorkerStatus } from "../types";
+import type {
+  WorkerConfig,
+  WorkerResult,
+  TestConfiguration,
+  WorkerStatus,
+  TransactionTiming
+} from "../types";
 import { DEFAULT_VALUES } from "../utils/constants";
 import type { NonceManager } from "../core/nonce-manager";
+import type { TransactionResponse } from "ethers";
 
 export class Worker {
   private readonly id: number;
@@ -13,6 +20,8 @@ export class Worker {
   private executor!: TransactionExecutor;
   private transactionCount = 0;
   private errors: string[] = [];
+  private transactionTimings: TransactionTiming[] = [];
+  private pendingTransactions: Map<string, TransactionTiming> = new Map();
 
   constructor(config: WorkerConfig) {
     this.id = config.id;
@@ -31,6 +40,50 @@ export class Worker {
     );
 
     await this.executor.initialize();
+
+    // Start listening for transaction confirmations
+    this.startTransactionListener();
+  }
+
+  private startTransactionListener(): void {
+    const provider = this.executor.getProvider();
+
+    // Listen for new blocks to check transaction confirmations
+    provider.on("block", async (blockNumber: number) => {
+      await this.checkPendingTransactions(blockNumber);
+    });
+  }
+
+  private async checkPendingTransactions(blockNumber: number): Promise<void> {
+    const provider = this.executor.getProvider();
+
+    for (const [hash, timing] of this.pendingTransactions.entries()) {
+      try {
+        const receipt = await provider.getTransactionReceipt(hash);
+
+        if (receipt && receipt.blockNumber) {
+          // Transaction confirmed!
+          const confirmedAt = new Date();
+          const finalizationTime = confirmedAt.getTime() - timing.sentAt.getTime();
+
+          const completedTiming: TransactionTiming = {
+            ...timing,
+            confirmedAt,
+            finalizationTime,
+            blockNumber: receipt.blockNumber
+          };
+
+          this.transactionTimings.push(completedTiming);
+          this.pendingTransactions.delete(hash);
+
+          console.log(
+            `Worker (${this.id}): Transaction ${hash} confirmed in ${finalizationTime}ms (block ${receipt.blockNumber})`
+          );
+        }
+      } catch (error) {
+        // Transaction receipt not yet available, continue waiting
+      }
+    }
   }
 
   async run(): Promise<WorkerResult> {
@@ -47,11 +100,19 @@ export class Worker {
         const txEndTime = Date.now();
         const duration = txEndTime - txStartTime;
 
+        // Track transaction timing
+        const sentAt = new Date();
+        const timing: TransactionTiming = {
+          hash: tx.hash,
+          sentAt
+        };
+
+        this.pendingTransactions.set(tx.hash, timing);
         this.transactionCount++;
-        console.log(`Worker (${this.id}): ${tx.hash} finished in ${(duration / 1000).toFixed(2)}s`);
+
+        console.log(`Worker (${this.id}): ${tx.hash} sent in ${(duration / 1000).toFixed(2)}s`);
 
         // Continue processing transactions
-
         await new Promise((resolve) => setTimeout(resolve, DEFAULT_VALUES.WORKER_DELAY));
       } catch (error: any) {
         const errorMessage = `tx failed - ${error.message}`;
@@ -81,14 +142,62 @@ export class Worker {
       }
     }
 
+    // Wait a bit more for final confirmations
+    console.log(`Worker (${this.id}): Waiting for final transaction confirmations...`);
+    await this.waitForFinalConfirmations();
+
     return this.getResult();
   }
 
+  private async waitForFinalConfirmations(maxWaitTime: number = 30000): Promise<void> {
+    const startTime = Date.now();
+
+    while (this.pendingTransactions.size > 0 && Date.now() - startTime < maxWaitTime) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // The block listener will handle confirmations
+      console.log(
+        `Worker (${this.id}): Still waiting for ${this.pendingTransactions.size} confirmations...`
+      );
+    }
+
+    // Mark any remaining transactions as unconfirmed
+    for (const [hash, timing] of this.pendingTransactions.entries()) {
+      this.transactionTimings.push({
+        ...timing,
+        finalizationTime: undefined // Unconfirmed
+      });
+    }
+    this.pendingTransactions.clear();
+  }
+
+  private calculateTimingStats(): { average?: number; min?: number; max?: number } {
+    const confirmedTimings = this.transactionTimings
+      .filter((t) => t.finalizationTime !== undefined)
+      .map((t) => t.finalizationTime!);
+
+    if (confirmedTimings.length === 0) {
+      return {};
+    }
+
+    const average = confirmedTimings.reduce((sum, time) => sum + time, 0) / confirmedTimings.length;
+    const min = Math.min(...confirmedTimings);
+    const max = Math.max(...confirmedTimings);
+
+    return { average, min, max };
+  }
+
   getResult(): WorkerResult {
+    const stats = this.calculateTimingStats();
+
     return {
       workerId: this.id,
       transactionCount: this.transactionCount,
-      errors: [...this.errors]
+      errors: [...this.errors],
+      transactionTimings: [...this.transactionTimings],
+      averageFinalizationTime: stats.average,
+      minFinalizationTime: stats.min,
+      maxFinalizationTime: stats.max
     };
   }
 
@@ -98,6 +207,12 @@ export class Worker {
       transactionCount: this.transactionCount,
       errorCount: this.errors.length
     };
+  }
+
+  // Clean up event listeners
+  async cleanup(): Promise<void> {
+    const provider = this.executor.getProvider();
+    provider.removeAllListeners("block");
   }
 
   // Future extension point for WebSocket connections
