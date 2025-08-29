@@ -38,6 +38,8 @@ export class Worker {
       await this.initialize();
     }
 
+    // Worker initialized and ready
+
     while (Date.now() < this.endTime) {
       try {
         const txStartTime = Date.now();
@@ -48,15 +50,30 @@ export class Worker {
         this.transactionCount++;
         console.log(`Worker (${this.id}): ${tx.hash} finished in ${(duration / 1000).toFixed(2)}s`);
 
+        // Continue processing transactions
+
         await new Promise((resolve) => setTimeout(resolve, DEFAULT_VALUES.WORKER_DELAY));
       } catch (error: any) {
         const errorMessage = `tx failed - ${error.message}`;
         console.error(`Worker (${this.id}): ${errorMessage}`);
         this.errors.push(errorMessage);
 
-        // Check if this is a nonce error - if so, log it more prominently
+        // Check if this is a nonce error - if so, recover and retry
         if (error.code === "NONCE_EXPIRED" || error.message.includes("nonce")) {
-          console.warn(`⚠️  Worker (${this.id}): NONCE CONFLICT - ${error.message}`);
+          console.warn(`⚠️  Worker (${this.id}): NONCE CONFLICT - attempting recovery`);
+
+          // Attempt to recover from nonce error
+          try {
+            await this.executor.recoverFromNonceError();
+            console.log(`✅ Worker (${this.id}): Nonce recovery completed, continuing...`);
+
+            // Skip the delay and continue immediately after recovery
+            continue;
+          } catch (recoveryError: any) {
+            console.error(
+              `❌ Worker (${this.id}): Nonce recovery failed: ${recoveryError.message}`
+            );
+          }
         }
 
         // Add small delay to avoid rapid retries

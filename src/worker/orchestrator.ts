@@ -36,9 +36,12 @@ export class WorkerOrchestrator {
     try {
       const providerManager = new ProviderManager(this.config.rpc);
       const tempWallet = new ethers.Wallet(this.config.privateKey, providerManager.getProvider());
-      const baseNonce = await tempWallet.getNonce();
 
-      this.nonceManager = new NonceManager(baseNonce);
+      // Use real-time nonce fetching to bypass cache
+      const provider = providerManager.getProvider();
+      const realTimeNonce = await provider.getTransactionCount(tempWallet.address, "pending");
+
+      this.nonceManager = new NonceManager(realTimeNonce);
 
       const executor = new TransactionExecutor(
         this.config.privateKey,
@@ -48,7 +51,7 @@ export class WorkerOrchestrator {
       );
       await executor.validateTransactionType(this.config.txType);
 
-      console.log(`📊 Starting with base nonce: ${baseNonce}`);
+      console.log(`📊 Starting with base nonce: ${realTimeNonce}`);
     } catch (error: any) {
       console.error(error.message);
       process.exit(1);
@@ -58,13 +61,17 @@ export class WorkerOrchestrator {
   private async startWorkers(): Promise<WorkerResult[]> {
     const endTime = Date.now() + this.config.duration * 1000;
 
-    // Get fresh nonce right before starting workers to avoid stale nonce issues
+    // Get fresh real-time nonce right before starting workers
     const providerManager = new ProviderManager(this.config.rpc);
     const freshWallet = new ethers.Wallet(this.config.privateKey, providerManager.getProvider());
-    const freshNonce = await freshWallet.getNonce();
+    const provider = providerManager.getProvider();
 
-    console.log(`🔄 Refreshed nonce from ${this.nonceManager.getCurrentNonce()} to ${freshNonce}`);
-    this.nonceManager.reset(freshNonce);
+    const realTimeFreshNonce = await provider.getTransactionCount(freshWallet.address, "pending");
+    console.log(
+      `🔄 Refreshed nonce from ${this.nonceManager.getCurrentNonce()} to ${realTimeFreshNonce}`
+    );
+
+    this.nonceManager.reset(realTimeFreshNonce);
 
     // Create worker configurations with shared nonce manager
     const workerConfigs = Array.from({ length: this.config.concurrency }, (_, i) => ({

@@ -50,4 +50,24 @@ export class TransactionExecutor {
   getWalletAddress(): string {
     return this.wallet.address;
   }
+
+  async getCurrentNetworkNonce(): Promise<number> {
+    return await this.wallet.getNonce();
+  }
+
+  async getRealTimeNonce(): Promise<number> {
+    // Use getTransactionCount with 'pending' to bypass caching
+    const provider = this.wallet.provider!;
+    const nonce = await provider.getTransactionCount(this.wallet.address, "pending");
+    return nonce;
+  }
+
+  async debugNonceStatus(): Promise<void> {
+    // Debug functionality removed for cleaner output
+  }
+
+  async recoverFromNonceError(): Promise<void> {
+    const realTimeNonce = await this.getRealTimeNonce();
+    this.nonceManager.reset(realTimeNonce);
+  }
 }

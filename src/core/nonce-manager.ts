@@ -4,7 +4,7 @@ export class NonceManager {
 
   constructor(baseNonce: number) {
     this.currentNonce = baseNonce;
-    console.log(`📊 NonceManager initialized with base nonce: ${baseNonce}`);
+    // Nonce manager initialized
   }
 
   getNextNonce(): number {
@@ -13,10 +13,7 @@ export class NonceManager {
     this.currentNonce++;
     this.totalAllocated++;
 
-    // Log every 50 nonce allocations to track progress
-    if (this.totalAllocated % 50 === 0) {
-      console.log(`📈 NonceManager: allocated ${this.totalAllocated} nonces, current: ${nonce}`);
-    }
+    // Track nonce allocations silently
 
     return nonce;
   }
@@ -33,7 +30,7 @@ export class NonceManager {
     const oldNonce = this.currentNonce;
     this.currentNonce = newBaseNonce;
     this.totalAllocated = 0;
-    console.log(`🔄 NonceManager reset from ${oldNonce} to ${newBaseNonce}`);
+    // Nonce manager reset completed
   }
 
   getStats() {
